@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>YT → MP3</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red: #ff2d2d;
+      --dark: #0a0a0a;
+      --card: #111111;
+      --border: #222;
+      --text: #f0f0f0;
+      --muted: #555;
+    }
+
+    body {
+      background: var(--dark);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      overflow: hidden;
+    }
+
+    /* Background grain */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .glow {
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(255,45,45,0.07) 0%, transparent 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 580px;
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3rem, 10vw, 5.5rem);
+      letter-spacing: 2px;
+      line-height: 1;
+      margin-bottom: 0.2rem;
+    }
+
+    .logo span { color: var(--red); }
+
+    .tagline {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 300;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 3rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+    }
+
+    .input-wrap {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      background: #1a1a1a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      padding: 0.85rem 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus { border-color: var(--red); }
+    input[type="text"]::placeholder { color: var(--muted); }
+
+    button {
+      background: var(--red);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      cursor: pointer;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      padding: 0.85rem 1.5rem;
+      transition: opacity 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    button:hover { opacity: 0.88; }
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .status {
+      font-size: 0.85rem;
+      min-height: 1.4rem;
+      color: var(--muted);
+      text-align: center;
+      transition: color 0.3s;
+    }
+
+    .status.error { color: var(--red); }
+    .status.success { color: #4caf80; }
+
+    .progress-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .progress-bar.active { display: block; }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--red);
+      width: 0%;
+      border-radius: 2px;
+      animation: progress-anim 3s ease-in-out forwards;
+    }
+
+    @keyframes progress-anim {
+      0%   { width: 0%; }
+      40%  { width: 55%; }
+      80%  { width: 85%; }
+      100% { width: 95%; }
+    }
+
+    .download-btn {
+      display: none;
+      width: 100%;
+      margin-top: 1rem;
+      background: #1a2e1a;
+      border: 1px solid #2a4a2a;
+      color: #4caf80;
+      font-size: 1rem;
+      padding: 1rem;
+    }
+
+    .download-btn:hover { background: #1f3a1f; opacity: 1; }
+    .download-btn.show { display: block; }
+
+    .steps {
+      margin-top: 2.5rem;
+      display: flex;
+      gap: 1rem;
+      justify-content: space-between;
+    }
+
+    .step {
+      flex: 1;
+      text-align: center;
+    }
+
+    .step-num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      color: var(--red);
+      line-height: 1;
+    }
+
+    .step-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-top: 0.25rem;
+    }
+
+    .divider {
+      width: 1px;
+      background: var(--border);
+      align-self: center;
+      height: 30px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="container">
+    <div class="logo">YT <span>→</span> MP3</div>
+    <div class="tagline">YouTube to MP3 Converter</div>
+
+    <div class="card">
+      <div class="input-wrap">
+        <input type="text" id="urlInput" placeholder="Paste YouTube link here..." />
+        <button id="convertBtn" onclick="startConvert()">Convert</button>
+      </div>
+
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+
+      <div class="status" id="status">Paste a YouTube URL above to get started</div>
+
+      <button class="download-btn" id="downloadBtn">⬇ Download MP3</button>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-label">Paste Link</div>
+      </div>
+      <div class="divider"></div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-label">Convert</div>
+      </div>
+      <div class="divider"></div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-label">Download</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentFileId = null;
+    let currentTitle = null;
+
+    async function startConvert() {
+      const url = document.getElementById('urlInput').value.trim();
+      const btn = document.getElementById('convertBtn');
+      const status = document.getElementById('status');
+      const progressBar = document.getElementById('progressBar');
+      const progressFill = document.getElementById('progressFill');
+      const downloadBtn = document.getElementById('downloadBtn');
+
+      if (!url) {
+        setStatus('Please paste a YouTube URL first.', 'error');
+        return;
+      }
+
+      // Reset UI
+      downloadBtn.classList.remove('show');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Converting';
+      progressBar.classList.add('active');
+      progressFill.style.animation = 'none';
+      progressFill.offsetHeight; // reflow
+      progressFill.style.animation = '';
+      setStatus('Fetching video info...', '');
+
+      try {
+        const res = await fetch('/convert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Conversion failed');
+
+        currentFileId = data.file_id;
+        currentTitle = data.title;
+
+        progressFill.style.animation = 'none';
+        progressFill.style.width = '100%';
+
+        setStatus(`✓ "${currentTitle}" is ready!`, 'success');
+        downloadBtn.textContent = `⬇ Download — ${currentTitle}.mp3`;
+        downloadBtn.classList.add('show');
+        downloadBtn.onclick = () => {
+          window.location.href = `/download/${currentFileId}/${encodeURIComponent(currentTitle)}`;
+        };
+
+      } catch (err) {
+        setStatus(err.message, 'error');
+        progressBar.classList.remove('active');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Convert';
+      }
+    }
+
+    function setStatus(msg, type) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'status ' + type;
+    }
+
+    document.getElementById('urlInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') startConvert();
+    });
+  </script>
+</body>
+</html>
