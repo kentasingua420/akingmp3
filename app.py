@@ -3,17 +3,12 @@ from flask_cors import CORS
 import yt_dlp
 import os
 import uuid
-from dotenv import load_dotenv
-
-load_dotenv()
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
 DOWNLOAD_FOLDER = 'downloads'
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
-
-FFMPEG_LOCATION = os.getenv('FFMPEG_LOCATION', None)
 
 @app.route('/')
 def index():
@@ -37,11 +32,9 @@ def convert():
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
+        'ffmpeg_location': r'C:\Users\kenta\Downloads\ffmpeg-2026-02-26-git-6695528af6-essentials_build\ffmpeg-2026-02-26-git-6695528af6-essentials_build\bin',
         'quiet': True,
     }
-
-    if FFMPEG_LOCATION:
-        ydl_opts['ffmpeg_location'] = FFMPEG_LOCATION
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -60,5 +53,6 @@ def download(file_id, title):
     return send_file(file_path, as_attachment=True, download_name=f'{title}.mp3')
 
 if __name__ == '__main__':
-    print("✅ Server running! Open http://localhost:5000 in your browser")
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 10000))
+    print(f"✅ Server running! Open http://localhost:{port} in your browser")
+    app.run(host='0.0.0.0', port=port, debug=False)
